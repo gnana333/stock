@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSE Options Chain</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px 0;
+        }
+        
+        /* Hamburger Menu Styles */
+        .hamburger-menu {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        .hamburger-btn {
+            background: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .hamburger-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .hamburger-icon {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .hamburger-icon span {
+            width: 25px;
+            height: 3px;
+            background: #1e3c72;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .menu-dropdown {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            padding: 10px 0;
+            min-width: 280px;
+            display: none;
+            z-index: 999;
+        }
+        
+        .menu-dropdown.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .menu-item {
+            padding: 12px 20px;
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .menu-item:hover {
+            background: #f8f9fa;
+            border-left-color: #1e3c72;
+            color: #333;
+        }
+        
+        .menu-item.active {
+            background: #e8eaf6;
+            border-left-color: #1e3c72;
+            font-weight: 600;
+        }
+        
+        .menu-icon {
+            width: 20px;
+            height: 20px;
+            color: #1e3c72;
+        }
+        
+        .alert-badge {
+            background: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: auto;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            margin: 0 auto;
+            max-width: 99%;
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            display: none;
+        }
+        
+        .controls-section {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .form-select, .btn {
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+        }
+        
+        .options-table-container {
+            overflow-x: auto;
+            overflow-y: auto;
+            margin-top: 5px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            max-height: calc(100vh - 200px);
+        }
+        
+        .options-table {
+            width: 100%;
+            background: white;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85rem;
+        }
+        
+        .options-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .options-table thead th {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 4px 6px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.7rem;
+            border: 1px solid #1a3461;
+        }
+        
+        .options-table tbody td {
+            padding: 2px 4px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+        }
+        
+        .options-table tfoot td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #1a3461;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #1565c0;
+        }
+        
+        .options-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* Call side (left) - Light yellow background */
+        .call-side {
+            background: rgba(255, 248, 220, 0.3);
+        }
+        
+        .call-side:hover {
+            background: rgba(255, 248, 220, 0.6) !important;
+        }
+        
+        /* Put side (right) - Light blue background */
+        .put-side {
+            background: rgba(220, 237, 255, 0.3);
+        }
+        
+        .put-side:hover {
+            background: rgba(220, 237, 255, 0.6) !important;
+        }
+        
+        /* NSE-style ITM highlighting */
+        .itm-put-cell {
+            background: rgba(255, 235, 205, 0.5) !important;
+            font-weight: 600;
+        }
+        
+        .itm-call-cell {
+            background: rgba(255, 235, 205, 0.5) !important;
+            font-weight: 600;
+        }
+        
+        /* Strike price column */
+        .strike-column {
+            background: #f0f0f0;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #1e3c72;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+        
+        /* ATM (At The Money) highlight - Yellow row like NSE */
+        .atm-row {
+            background: #fffacd !important;
+        }
+        
+        .atm-row td {
+            background: #fffacd !important;
+            font-weight: 700;
+        }
+        
+        .atm-row .strike-column {
+            background: #ffd700 !important;
+            color: #000;
+            font-weight: 800;
+            font-size: 1.05rem;
+        }
+        
+        .atm-row:hover td {
+            background: #fff59d !important;
+        }
+        
+        /* OTM (Out of The Money) - lighter text */
+        .otm-value {
+            color: #999;
+            font-weight: 400;
+        }
+        
+        /* Price changes - NSE style */
+        .price-positive {
+            color: #00a000;
+            font-weight: 600;
+        }
+        
+        .price-negative {
+            color: #e00000;
+            font-weight: 600;
+        }
+        
+        /* LTP highlighting */
+        .ltp-value {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        
+        /* High OI highlighting */
+        .high-oi {
+            background: rgba(173, 216, 230, 0.3);
+            font-weight: 600;
+        }
+        
+        /* Highest and second highest value highlighting */
+        .highest-value {
+            background-color: #90EE90 !important; /* Light green */
+            font-weight: 600;
+        }
+        
+        .second-highest-value {
+            background-color: #ADD8E6 !important; /* Light blue */
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner-border {
+            color: #1e3c72;
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .info-banner {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 5px 10px;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            border-left: 3px solid #2196f3;
+        }
+        
+        .info-banner h5 {
+            display: none;
+        }
+        
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #1e3c72;
+        }
+        
+        .spot-price {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            font-style: italic;
+        }
+        
+        /* Header groups */
+        .header-put {
+            background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+        }
+        
+        .header-call {
+            background: linear-gradient(135deg, #ffb74d 0%, #ffa726 100%);
+        }
+        
+        .header-strike {
+            background: linear-gradient(135deg, #78909c 0%, #607d8b 100%);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .options-table {
+                font-size: 0.7rem;
+            }
+            
+            .options-table thead th,
+            .options-table tbody td {
+                padding: 6px 4px;
+            }
+        }
+        
+        .nav-links {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .nav-links a {
+            color: #1e3c72;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            color: #2a5298;
+            text-decoration: underline;
+        }
+        
+        /* Column Selector Styles */
+        /* Simplified table - showing only OI, Chng OI, Volume */
+        .col-hidden {
+            display: none !important;
+        }
+        
+        /* Real-time clock */
+        .live-clock {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1e3c72;
+            z-index: 1000;
+        }
+        
+        .live-clock .time {
+            font-size: 1.1rem;
+            color: #2a5298;
+        }
+    </style>
+</head>
+<body>
+    <!-- Live Clock -->
+    <div class="live-clock">
+        <div class="time" id="liveClock">--:--:--</div>
+    </div>
+    
+    <!-- Hamburger Menu -->
+    <div class="hamburger-menu">
+        <button class="hamburger-btn" onclick="toggleMenu()">
+            <div class="hamburger-icon">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </button>
+        <div class="menu-dropdown" id="menuDropdown">
+            <a href="/" class="menu-item active">
+                <svg class="menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span>Options Chain</span>
+            </a>
+            <a href="/historical" class="menu-item">
+                <svg class="menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span>Historical Data</span>
+            </a>
+        </div>
+    </div>
+    
+    <div class="container-fluid">
+        <div class="main-container">
+            <div class="header">
+                <h1><i class="fas fa-link"></i> NSE Options Chain</h1>
+                <p>Live data: 21 strikes total (ATM ±10 strikes, where ATM is rounded to nearest from spot)</p>
+            </div>
+            
+            <div class="controls-section">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label"><strong>Select Symbol</strong></label>
+                        <select class="form-select" id="symbolSelect">
+                            <option value="">Choose a symbol...</option>
+                            {% for symbol in symbols %}
+                            <option value="{{ symbol }}">{{ symbol }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label"><strong>Select Expiry Date</strong></label>
+                        <select class="form-select" id="expirySelect" disabled>
+                            <option value="">Select symbol first...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" id="fetchBtn" disabled>
+                            <i class="fas fa-sync-alt"></i> Reload Options Chain
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="loading" id="loadingDiv" style="display: none;">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Fetching options chain data...</p>
+            </div>
+            
+            <div id="optionsChainContainer" style="display: none;">
+                <div class="info-banner">
+                    <h5><i class="fas fa-chart-line"></i> Live Options Chain for <span id="selectedSymbol"></span></h5>
+                    <div class="stats-row" id="statsRow">
+                        <!-- Stats will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="options-table-container">
+                    <table class="options-table">
+                        <thead>
+                            <tr>
+                                <th colspan="3" class="header-call">CALLS</th>
+                                <th class="header-strike">STRIKE</th>
+                                <th colspan="3" class="header-put">PUTS</th>
+                            </tr>
+                            <tr>
+                                <th class="header-call col-call-change_in_oi">Chng OI</th>
+                                <th class="header-call col-call-oi">OI</th>
+                                <th class="header-call col-call-volume">Volume</th>
+
+                                <th class="header-strike">STRIKE</th>
+
+                                <th class="header-put col-put-volume">Volume</th>
+                                <th class="header-put col-put-oi">OI</th>
+                                <th class="header-put col-put-change_in_oi">Chng OI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="optionsTableBody">
+                            <!-- Options chain data will be populated here -->
+                        </tbody>
+                        <tfoot>
+                            <tr id="totalsRow">
+                                <!-- Totals will be populated here -->
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <div class="timestamp" id="timestamp"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const symbolSelect = document.getElementById('symbolSelect');
+            const expirySelect = document.getElementById('expirySelect');
+            const fetchBtn = document.getElementById('fetchBtn');
+            const loadingDiv = document.getElementById('loadingDiv');
+            const errorMessage = document.getElementById('errorMessage');
+            const optionsChainContainer = document.getElementById('optionsChainContainer');
+            const optionsTableBody = document.getElementById('optionsTableBody');
+            const selectedSymbol = document.getElementById('selectedSymbol');
+            const timestamp = document.getElementById('timestamp');
+            const statsRow = document.getElementById('statsRow');
+            
+            let currentSymbol = '';
+            let currentExpiry = '';
+            let isAutoSelecting = false;  // Flag to prevent double-loading
+            
+            // When symbol is selected, fetch expiry dates
+            symbolSelect.addEventListener('change', function() {
+                const symbol = this.value;
+                currentSymbol = symbol;
+                
+                if (!symbol) {
+                    expirySelect.disabled = true;
+                    expirySelect.innerHTML = '<option value="">Select symbol first...</option>';
+                    fetchBtn.disabled = true;
+                    return;
+                }
+                
+                // Fetch expiry dates
+                fetchExpiryDates(symbol);
+            });
+            
+            // When expiry is manually changed, enable button and auto-load
+            expirySelect.addEventListener('change', function() {
+                currentExpiry = this.value;
+                fetchBtn.disabled = !this.value;
+                
+                // Auto-load options chain when expiry changes (but not during auto-select)
+                if (!isAutoSelecting && currentSymbol && currentExpiry) {
+                    console.log('Expiry changed manually, auto-loading options chain...');
+                    fetchOptionsChain(currentSymbol, currentExpiry);
+                }
+            });
+            
+            // Auto-refresh variables
+            let autoRefreshInterval = null;
+            let isAutoRefreshEnabled = false;
+            
+            // Fetch options chain
+            fetchBtn.addEventListener('click', function() {
+                if (currentSymbol && currentExpiry) {
+                    fetchOptionsChain(currentSymbol, currentExpiry);
+                    // Start auto-refresh after first load
+                    startAutoRefresh();
+                }
+            });
+            
+            // Auto-refresh function
+            function startAutoRefresh() {
+                // Clear existing interval if any
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+                
+                // Set up auto-refresh every 60 seconds (1 minute)
+                autoRefreshInterval = setInterval(function() {
+                    if (currentSymbol && currentExpiry) {
+                        console.log('Auto-refreshing options chain silently in background...');
+                        fetchOptionsChain(currentSymbol, currentExpiry, true); // true = silent refresh
+                    }
+                }, 60000); // 60000 ms = 1 minute
+                
+                console.log('Auto-refresh enabled: Data will refresh silently every 1 minute');
+            }
+            
+            // Stop auto-refresh when symbol changes
+            symbolSelect.addEventListener('change', function() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                    console.log('Auto-refresh stopped due to symbol change');
+                }
+            });
+            
+            // Stop auto-refresh when expiry changes
+            expirySelect.addEventListener('change', function() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                    console.log('Auto-refresh stopped due to expiry change');
+                }
+            });
+            
+            function fetchExpiryDates(symbol) {
+                expirySelect.disabled = true;
+                expirySelect.innerHTML = '<option value="">Loading...</option>';
+                
+                fetch('/get_expiry_dates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ symbol: symbol })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                        expirySelect.innerHTML = '<option value="">Error loading dates</option>';
+                    } else {
+                        const expiries = data.expiry_dates;
+                        if (expiries && expiries.length > 0) {
+                            expirySelect.innerHTML = '';
+                            expiries.forEach(expiry => {
+                                const option = document.createElement('option');
+                                option.value = expiry.date;
+                                option.textContent = expiry.display;
+                                expirySelect.appendChild(option);
+                            });
+                            expirySelect.disabled = false;
+                            
+                            // Auto-select the first (nearest) expiry date
+                            if (expiries.length > 0) {
+                                isAutoSelecting = true;  // Set flag to prevent double-loading
+                                expirySelect.value = expiries[0].date;
+                                currentExpiry = expiries[0].date;
+                                fetchBtn.disabled = false;  // Enable reload button
+                                console.log('Auto-selected nearest expiry:', expiries[0].display);
+                                isAutoSelecting = false;  // Reset flag
+                                
+                                // Auto-load options chain for the nearest expiry
+                                fetchOptionsChain(symbol, expiries[0].date);
+                            }
+                        } else {
+                            expirySelect.innerHTML = '<option value="">No expiry dates available</option>';
+                            showError('No expiry dates found for ' + symbol);
+                        }
+                    }
+                })
+                .catch(error => {
+                    showError('Failed to fetch expiry dates: ' + error.message);
+                    expirySelect.innerHTML = '<option value="">Error loading dates</option>';
+                });
+            }
+            
+            function fetchOptionsChain(symbol, expiryDate, silent = false) {
+                // Only show loading indicator if it's not a silent refresh
+                if (!silent) {
+                    loadingDiv.style.display = 'block';
+                    optionsChainContainer.style.display = 'none';
+                }
+                errorMessage.style.display = 'none';
+                
+                fetch('/get_options_chain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        symbol: symbol,
+                        expiry_date: expiryDate
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!silent) {
+                        loadingDiv.style.display = 'none';
+                    }
+                    
+                    if (data.error) {
+                        if (!silent) {
+                            showError(data.error);
+                        } else {
+                            console.error('Auto-refresh error:', data.error);
+                        }
+                    } else {
+                        displayOptionsChain(data.options_chain, symbol);
+                    }
+                })
+                .catch(error => {
+                    if (!silent) {
+                        loadingDiv.style.display = 'none';
+                        showError('Failed to fetch options chain: ' + error.message);
+                    } else {
+                        console.error('Auto-refresh failed:', error.message);
+                    }
+                });
+            }
+            
+            function displayOptionsChain(optionsChain, symbol) {
+                if (!optionsChain || optionsChain.length === 0) {
+                    showError('No live data available. Please check: 1) Market is open (9:15 AM - 3:30 PM IST), 2) Valid API credentials, 3) Symbol has active options');
+                    return;
+                }
+                
+                selectedSymbol.textContent = symbol;
+                
+                // Get spot price from first row
+                const spotPrice = optionsChain[0]?.spot_price || 0;
+                
+                // Calculate statistics (all in LOTS)
+                let totalPutOI = 0;
+                let totalCallOI = 0;
+                let totalPutVolume = 0;
+                let totalCallVolume = 0;
+                let totalPutChangeOI = 0;
+                let totalCallChangeOI = 0;
+                let maxOI = 0;
+                
+                // Get pre-calculated totals from backend (includes ALL strikes, not just displayed)
+                // Backend sends these in the first row
+                if (optionsChain.length > 0 && optionsChain[0].total_call_volume !== undefined) {
+                    totalCallVolume = optionsChain[0].total_call_volume || 0;
+                    totalPutVolume = optionsChain[0].total_put_volume || 0;
+                    totalCallOI = optionsChain[0].total_call_oi || 0;
+                    totalPutOI = optionsChain[0].total_put_oi || 0;
+                    totalCallChangeOI = optionsChain[0].total_call_change_oi || 0;
+                    totalPutChangeOI = optionsChain[0].total_put_change_oi || 0;
+                    console.log(`Using backend totals (ALL strikes):`);
+                    console.log(`  Calls - Vol=${totalCallVolume.toFixed(0)}, OI=${totalCallOI.toFixed(0)}, ChgOI=${totalCallChangeOI.toFixed(0)}`);
+                    console.log(`  Puts  - Vol=${totalPutVolume.toFixed(0)}, OI=${totalPutOI.toFixed(0)}, ChgOI=${totalPutChangeOI.toFixed(0)}`);
+                }
+                
+                // Calculate maxOI from displayed strikes only (for highlighting)
+                optionsChain.forEach((row, index) => {
+                    if (row.put) {
+                        maxOI = Math.max(maxOI, row.put.oi || 0);
+                    }
+                    if (row.call) {
+                        maxOI = Math.max(maxOI, row.call.oi || 0);
+                    }
+                });
+                
+                // Display spot price and statistics (all in LOTS)
+                statsRow.innerHTML = `
+                    ${spotPrice > 0 ? `<div class="stat-card">
+                        <span class="stat-label">Spot:</span>
+                        <span class="spot-price">₹${spotPrice.toFixed(2)}</span>
+                    </div>` : ''}
+                    <div class="stat-card">
+                        <span class="stat-label">PCR:</span>
+                        <span class="stat-value">${totalCallOI > 0 ? (totalPutOI / totalCallOI).toFixed(2) : 'N/A'}</span>
+                    </div>
+                `;
+                
+                // Add totals row at bottom of table
+                const totalsRow = document.getElementById('totalsRow');
+                totalsRow.innerHTML = `
+                    <td class="col-call-change_in_oi ${totalCallChangeOI >= 0 ? 'price-positive' : 'price-negative'}">${formatNumberWithSign(Math.round(totalCallChangeOI))}</td>
+                    <td class="col-call-oi">${formatNumber(Math.round(totalCallOI))}</td>
+                    <td class="col-call-volume">${formatNumber(Math.round(totalCallVolume))}</td>
+                    <td><strong>TOTAL</strong></td>
+                    <td class="col-put-volume">${formatNumber(Math.round(totalPutVolume))}</td>
+                    <td class="col-put-oi">${formatNumber(Math.round(totalPutOI))}</td>
+                    <td class="col-put-change_in_oi ${totalPutChangeOI >= 0 ? 'price-positive' : 'price-negative'}">${formatNumberWithSign(Math.round(totalPutChangeOI))}</td>
+                `;
+                
+                // Build table rows
+                optionsTableBody.innerHTML = '';
+                
+                // Debug: Log first row to check change_in_oi values
+                if (optionsChain.length > 0) {
+                    console.log('Sample row data:', optionsChain[0]);
+                    if (optionsChain[0].call) {
+                        console.log('Call change_in_oi:', optionsChain[0].call.change_in_oi, 'Type:', typeof optionsChain[0].call.change_in_oi);
+                    }
+                    if (optionsChain[0].put) {
+                        console.log('Put change_in_oi:', optionsChain[0].put.change_in_oi, 'Type:', typeof optionsChain[0].put.change_in_oi);
+                    }
+                }
+                
+                optionsChain.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+                    const isATM = row.is_atm || false;
+                    const strike = row.strike;
+                    
+                    // Add ATM class
+                    if (isATM) {
+                        tr.classList.add('atm-row');
+                    }
+                    
+                    // Determine ITM/OTM for puts (ITM when strike > spot)
+                    const putITM = spotPrice > 0 && strike > spotPrice;
+                    // Determine ITM/OTM for calls (ITM when strike < spot)
+                    const callITM = spotPrice > 0 && strike < spotPrice;
+                    
+                    // Call side - Chng OI, OI, Volume
+                    if (row.call) {
+                        const callOIClass = row.call.oi > maxOI * 0.7 ? 'high-oi' : '';
+
+                        tr.innerHTML += `
+                            <td class="call-side col-call-change_in_oi ${getChangeClass(row.call.change_in_oi)}">${row.call.change_in_oi !== null && row.call.change_in_oi !== undefined ? formatNumberWithSign(Math.round(row.call.change_in_oi)) : '-'}</td>
+                            <td class="call-side col-call-oi ${callOIClass}">${formatNumber(Math.round(row.call.oi))}</td>
+                            <td class="call-side col-call-volume">${formatNumber(Math.round(row.call.volume))}</td>
+                        `;
+                    } else {
+                        tr.innerHTML += `
+                            <td class="call-side col-call-change_in_oi">-</td>
+                            <td class="call-side col-call-oi">-</td>
+                            <td class="call-side col-call-volume">-</td>
+                        `;
+                    }
+                    
+                    // Strike price
+                    tr.innerHTML += `<td class="strike-column">${strike}</td>`;
+                    
+                    // Put side - Volume, OI, Chng OI
+                    if (row.put) {
+                        const putOIClass = row.put.oi > maxOI * 0.7 ? 'high-oi' : '';
+
+                        tr.innerHTML += `
+                            <td class="put-side col-put-volume">${formatNumber(Math.round(row.put.volume))}</td>
+                            <td class="put-side col-put-oi ${putOIClass}">${formatNumber(Math.round(row.put.oi))}</td>
+                            <td class="put-side col-put-change_in_oi ${getChangeClass(row.put.change_in_oi)}">${row.put.change_in_oi !== null && row.put.change_in_oi !== undefined ? formatNumberWithSign(Math.round(row.put.change_in_oi)) : '-'}</td>
+                        `;
+                    } else {
+                        tr.innerHTML += `
+                            <td class="put-side col-put-volume">-</td>
+                            <td class="put-side col-put-oi">-</td>
+                            <td class="put-side col-put-change_in_oi">-</td>
+                        `;
+                    }
+                    
+                    optionsTableBody.appendChild(tr);
+                });
+                
+                // Apply highlighting for highest and second highest values
+                applyValueHighlighting(optionsChain);
+                
+                timestamp.textContent = `Last updated: ${new Date().toLocaleString()}`;
+                optionsChainContainer.style.display = 'block';
+            }
+            
+            function applyValueHighlighting(optionsChain) {
+                // Collect values for each column (CALLS and PUTS separately)
+                const callVolumes = [];
+                const callOIs = [];
+                const callChangeOIs = [];
+                const putVolumes = [];
+                const putOIs = [];
+                const putChangeOIs = [];
+                
+                optionsChain.forEach((row, index) => {
+                    if (row.call) {
+                        callVolumes.push({ value: row.call.volume, index });
+                        callOIs.push({ value: row.call.oi, index });
+                        // Use absolute value for Change in OI
+                        callChangeOIs.push({ value: Math.abs(row.call.change_in_oi || 0), index });
+                    }
+                    if (row.put) {
+                        putVolumes.push({ value: row.put.volume, index });
+                        putOIs.push({ value: row.put.oi, index });
+                        // Use absolute value for Change in OI
+                        putChangeOIs.push({ value: Math.abs(row.put.change_in_oi || 0), index });
+                    }
+                });
+                
+                // Function to find and apply highlighting
+                function highlightTopTwo(dataArray, side, columnClass) {
+                    // Sort by value descending
+                    const sorted = dataArray.sort((a, b) => b.value - a.value);
+                    
+                    // Get highest and second highest (skip if value is 0)
+                    const highest = sorted[0] && sorted[0].value > 0 ? sorted[0] : null;
+                    const secondHighest = sorted[1] && sorted[1].value > 0 ? sorted[1] : null;
+                    
+                    if (highest) {
+                        const row = optionsTableBody.children[highest.index];
+                        const cell = row.querySelector(`.${side}-side.${columnClass}`);
+                        if (cell && cell.textContent !== '-') {
+                            cell.classList.add('highest-value');
+                        }
+                    }
+                    
+                    if (secondHighest) {
+                        const row = optionsTableBody.children[secondHighest.index];
+                        const cell = row.querySelector(`.${side}-side.${columnClass}`);
+                        if (cell && cell.textContent !== '-') {
+                            cell.classList.add('second-highest-value');
+                        }
+                    }
+                }
+                
+                // Apply highlighting for CALLS
+                highlightTopTwo([...callVolumes], 'call', 'col-call-volume');
+                highlightTopTwo([...callOIs], 'call', 'col-call-oi');
+                highlightTopTwo([...callChangeOIs], 'call', 'col-call-change_in_oi');
+                
+                // Apply highlighting for PUTS
+                highlightTopTwo([...putVolumes], 'put', 'col-put-volume');
+                highlightTopTwo([...putOIs], 'put', 'col-put-oi');
+                highlightTopTwo([...putChangeOIs], 'put', 'col-put-change_in_oi');
+            }
+            
+            function formatNumber(num) {
+                if (!num || num === 0) return '-';
+                return num.toLocaleString('en-IN');
+            }
+            
+            function formatNumberWithSign(num) {
+                // Handle null, undefined, or zero
+                if (num === null || num === undefined) return '-';
+                if (num === 0) return '-';
+                
+                // For negative numbers, toLocaleString already includes the minus sign
+                // For positive numbers, we need to add the plus sign
+                if (num > 0) {
+                    return '+' + num.toLocaleString('en-IN');
+                } else {
+                    // num is negative, toLocaleString will include the minus sign
+                    return num.toLocaleString('en-IN');
+                }
+            }
+            
+            // Test the function
+            console.log('Testing formatNumberWithSign:');
+            console.log('formatNumberWithSign(1234):', formatNumberWithSign(1234));
+            console.log('formatNumberWithSign(-1234):', formatNumberWithSign(-1234));
+            console.log('formatNumberWithSign(0):', formatNumberWithSign(0));
+            console.log('formatNumberWithSign(-500):', formatNumberWithSign(-500));
+            console.log('formatNumberWithSign(-12345):', formatNumberWithSign(-12345));
+            
+            function getChangeClass(value) {
+                if (!value || value === 0) return '';
+                return value > 0 ? 'price-positive' : 'price-negative';
+            }
+            
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            }
+        });
+        
+        // Hamburger menu toggle
+        let menuOpen = false;
+        
+        function toggleMenu() {
+            menuOpen = !menuOpen;
+            const dropdown = document.getElementById('menuDropdown');
+            dropdown.classList.toggle('active', menuOpen);
+        }
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.querySelector('.hamburger-menu');
+            if (!menu.contains(event.target) && menuOpen) {
+                toggleMenu();
+            }
+        });
+        
+        // Live Clock Functionality
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const timeString = `${hours}:${minutes}:${seconds}`;
+            
+            const clockElement = document.getElementById('liveClock');
+            if (clockElement) {
+                clockElement.textContent = timeString;
+            }
+        }
+        
+        // Update clock every second
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call
+        
+        // Column toggle removed - showing only OI, Change OI, and Volume
+    </script>
+</body>
+</html>
