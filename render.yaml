@@ -6,7 +6,7 @@ services:
     plan: free
     branch: main
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 600
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 600 --log-level info
     envVars:
       - key: API_KEY
         sync: false
@@ -20,5 +20,8 @@ services:
         sync: false
       - key: DB_NAME
         value: stock_volumes_db
+      - key: FLASK_ENV
+        value: production
       - key: PYTHON_VERSION
         value: 3.11.7
+
